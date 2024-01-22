@@ -10,8 +10,6 @@ import com.cuencalerma.kosmosdemo.doctors.bd.repositories.DoctorOfficeRepository
 import com.cuencalerma.kosmosdemo.doctors.bd.repositories.DoctorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
