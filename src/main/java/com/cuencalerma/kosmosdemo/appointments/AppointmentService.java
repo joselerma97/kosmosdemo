@@ -10,6 +10,9 @@ import com.cuencalerma.kosmosdemo.doctors.bd.repositories.DoctorOfficeRepository
 import com.cuencalerma.kosmosdemo.doctors.bd.repositories.DoctorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
@@ -49,26 +52,48 @@ public class AppointmentService {
             throw new AppointmentException("No se puede agendar cita para un mismo Dr. a la misma hora.");
         }
 
+        if(isPatientScheduleOverlap(appointments, info)){
+            throw new AppointmentException("No se puede agendar cita para un paciente a la una misma hora ni con menos de 2 horas\n" +
+                    "de diferencia para el mismo día.");
+        }
+
         return appointmentRepository.save(
                 new Appointment(doctorOffice.get(), doctor.get(), info.getSchedule(), info.getPatient())
         );
     }
 
 
+    private boolean checkYearDate(Appointment appointment, AddAppointment info){
+        return appointment.getSchedule().getYear() == info.getSchedule().getYear()
+                && appointment.getSchedule().getDayOfYear() == info.getSchedule().getDayOfYear();
+    }
+
     private boolean isSameOfficeHour(List<Appointment> appointments, AddAppointment info){
         return appointments.stream().anyMatch( appointment ->
                 appointment.getDoctorOffice().getDoctorOfficeId() == info.getDoctorOfficeId()
-        && appointment.getSchedule().getHour() == info.getSchedule().getHour());
+        && appointment.getSchedule().getHour() == info.getSchedule().getHour()
+        && checkYearDate(appointment, info));
     }
 
     private boolean isSameDoctor(List<Appointment> appointments, AddAppointment info){
         return appointments.stream().anyMatch( appointment ->
-                appointment.getDoctor().getDoctorId() == info.getDoctorId());
+                appointment.getDoctor().getDoctorId() == info.getDoctorId()
+                && appointment.getSchedule().getHour() == info.getSchedule().getHour()
+                && checkYearDate(appointment, info));
     }
 
     private boolean isPatientScheduleOverlap(List<Appointment> appointments, AddAppointment info){
-        List<Appointment> patientAppointments = appointments.stream().filter(appointment -> appointment.getPatient() == info.getPatient()).toList();
+        List<Appointment> patientAppointments = appointments.stream().filter(appointment -> appointment.getPatient() == info.getPatient()
+        && checkYearDate(appointment, info)).toList();
+        Optional<Appointment> lastAppointment = patientAppointments.stream().max(
+          Comparator.comparing(Appointment::getSchedule)
+        );
 
+        if(lastAppointment.isPresent()){
+            return info.getSchedule().getHour() - lastAppointment.get().getSchedule().getHour() < 2;
+        }
+
+        return false;
     }
 
 }
